@@ -22,15 +22,6 @@ mkdir -p ${HLS_DIR}
 
 # 2. Avvia FFmpeg (in background)
 echo "--> Avvio FFmpeg per proxyare RTSP in HLS rotante: ${RTSP_URL}"
-# Usiamo il percorso assoluto: ${HLS_DIR}/stream.m3u8
-# ffmpeg -i "${RTSP_URL}" \
-#     -c:v copy \
-#     -an \
-#     -hls_time 1 \
-#     -hls_list_size 10 \
-#     -hls_flags delete_segments \
-#     -f hls "${HLS_DIR}/stream.m3u8" & # <--- CORREZIONE: Percorso assoluto
-
 ffmpeg -i "${RTSP_URL}" -c:v copy -an -g ${GOP_SIZE} -hls_time 1 -hls_list_size 3 -hls_flags delete_segments -f hls "${HLS_DIR}/stream.m3u8" &
 
 # 3. Avvia il server HTTP Python (in foreground)
