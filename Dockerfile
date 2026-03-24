@@ -1,22 +1,16 @@
 # Usa l'immagine slim per la base Debian
 FROM python:3.12-slim
+RUN pip install uv
 
-# Definisce le variabili di ambiente interne per lo script
-ENV HLS_PORT=8090
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
+COPY pyproject.toml uv.lock /app/  
+RUN uv sync --locked
+COPY . /app/
 
-# 1. Installazione FFmpeg
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+EXPOSE 9000
 
-# 2. Copia e rende eseguibile lo script di avvio
-COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
-
-# Espone la porta INTERNA 8090
-EXPOSE 8090
-
-# CMD avvia lo script di gestione
-CMD ["/app/entrypoint.sh"]
+CMD ["uv", "run", "python", "ws_streamer.py"]
