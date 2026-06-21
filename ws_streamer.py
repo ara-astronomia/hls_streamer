@@ -70,21 +70,27 @@ async def ffmpeg_relay_loop():
     
     await asyncio.sleep(0.5) # Ritardo asincrono
 
+    consecutive_timeouts = 0
     while True:
         try:
             # Leggi i chunk
-            chunk = await asyncio.wait_for(ffmpeg_proc.stdout.read(4096), timeout=5) 
-            
+            chunk = await asyncio.wait_for(ffmpeg_proc.stdout.read(4096), timeout=5)
+            consecutive_timeouts = 0
+
             if not chunk:
                 break
-            
+
             # Invia ai client connessi
             if clients[CAMERA_NAME]:
                 await asyncio.gather(*(client.send(chunk) for client in clients[CAMERA_NAME]))
 
         except asyncio.TimeoutError:
-            if ffmpeg_proc.returncode is not None:
-                break # FFMPEG è morto
+            consecutive_timeouts += 1
+            # ffmpeg vivo ma bloccato: dopo 3 timeout consecutivi (15s) usciamo
+            # così Docker può fare il restart del container
+            if ffmpeg_proc.returncode is not None or consecutive_timeouts >= 3:
+                logging.warning(f"[FFMPEG:{CAMERA_NAME}] Stallo rilevato ({consecutive_timeouts} timeout consecutivi), uscita")
+                break
         except asyncio.CancelledError:
             break
         except Exception as e:
